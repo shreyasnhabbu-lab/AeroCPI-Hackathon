@@ -21,6 +21,11 @@ import os
 def serve_frontend():
     return FileResponse("index.html")
 
+@app.get("/favicon.png")
+def serve_favicon():
+    return FileResponse("favicon.png")
+
+
 
 
 # Global State for Scraper
@@ -261,15 +266,15 @@ def login_api(request: LoginRequest):
         
     # Verify hash
     hashed_input = hashlib.sha256(request.password.encode()).hexdigest()
-    if hashed_input != user['password_hash']:
+    if hashed_input != user[1]:
         raise HTTPException(status_code=401, detail="Invalid email or password")
         
     # Generate mock token
-    token = f"jwt-mock-{user['role']}-{'admin' if user['role']=='admin' else 'jury'}-8932"
+    token = f"jwt-mock-{user[0]}-{'admin' if user[0]=='admin' else 'jury'}-8932"
     
     return {
         "status": "success",
-        "role": user['role'],
+        "role": user[0],
         "token": token
     }
 
