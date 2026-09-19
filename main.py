@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import pandas as pd
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -41,8 +42,7 @@ app.add_middleware(
 )
 
 def get_db_connection():
-    conn = sqlite3.connect('aero_cpi.db')
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect("postgresql://neondb_owner:npg_BR1ro8vGHAND@ep-long-frog-az4ccszz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require")
     return conn
 
 @app.get("/api/history")
@@ -50,11 +50,11 @@ def get_history(route: str = "All Routes", class_type: str = "economy"):
     conn = get_db_connection()
     if route == "All Routes":
         # Composite CPI logic: Average price across all routes per date
-        query = "SELECT date, 'All Routes' as route, AVG(price) as price FROM historical_prices WHERE class_type = ? GROUP BY date ORDER BY date ASC"
+        query = "SELECT date, 'All Routes' as route, AVG(price) as price FROM historical_prices WHERE class_type = %s GROUP BY date ORDER BY date ASC"
         df = pd.read_sql_query(query, conn, params=(class_type,))
     else:
         # Route specific logic: Group by date to average out intra-day multiple scrapes
-        query = "SELECT date, route, AVG(price) as price FROM historical_prices WHERE route = ? AND class_type = ? GROUP BY date ORDER BY date ASC"
+        query = "SELECT date, route, AVG(price) as price FROM historical_prices WHERE route = %s AND class_type = %s GROUP BY date ORDER BY date ASC"
         df = pd.read_sql_query(query, conn, params=(route, class_type))
     conn.close()
     
@@ -96,7 +96,7 @@ def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7):
     total_records = cursor.fetchone()[0]
     
     offset = (page - 1) * limit
-    query = f"SELECT rowid, date, route, price, COALESCE(departure_date, date) as departure_date, COALESCE(timestamp, date || ' 00:00:00') as timestamp, source_portal, airline, flight_code FROM historical_prices {where_clause} ORDER BY rowid DESC LIMIT {limit} OFFSET {offset}"
+    query = f"SELECT id, date, route, price, COALESCE(departure_date, date) as departure_date, COALESCE(timestamp, date || ' 00:00:00') as timestamp, source_portal, airline, flight_code FROM historical_prices {where_clause} ORDER BY id DESC LIMIT {limit} OFFSET {offset}"
     
     df = pd.read_sql_query(query, conn)
     conn.close()
@@ -117,7 +117,7 @@ def export_raw_logs(days: int = 7):
     else:
         where_clause = ""
         
-    query = f"SELECT rowid, date, route, price, COALESCE(departure_date, date) as departure_date, COALESCE(timestamp, date || ' 00:00:00') as timestamp, source_portal, airline, flight_code FROM historical_prices {where_clause} ORDER BY rowid DESC"
+    query = f"SELECT id, date, route, price, COALESCE(departure_date, date) as departure_date, COALESCE(timestamp, date || ' 00:00:00') as timestamp, source_portal, airline, flight_code FROM historical_prices {where_clause} ORDER BY id DESC"
     df = pd.read_sql_query(query, conn)
     conn.close()
     
@@ -175,8 +175,8 @@ def get_global_stats():
     heatmap = {}
     routes_to_check = ["Banglore-New Delhi", "New Delhi-Mumbai", "Mumbai-Chennai"]
     for r in routes_to_check:
-        cursor.execute("SELECT price FROM historical_prices WHERE route=? ORDER BY date ASC", (r,))
-        prices = [row['price'] for row in cursor.fetchall()]
+        cursor.execute("SELECT price FROM historical_prices WHERE route=%s ORDER BY date ASC", (r,))
+        prices = [row[0] for row in cursor.fetchall()]
         if len(prices) >= 2:
             # Compare latest with oldest available in the sliding window
             window = prices[-30:] if len(prices) > 30 else prices
@@ -252,7 +252,7 @@ def run_live_scrape(route_strings: list, days: int, class_type: str):
 def login_api(request: LoginRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT role, password_hash FROM users WHERE email = ?", (request.email,))
+    cursor.execute("SELECT role, password_hash FROM users WHERE email = %s", (request.email,))
     user = cursor.fetchone()
     conn.close()
     
@@ -319,7 +319,7 @@ def trigger_scrape(request: ScrapeRequest):
                 
                 cursor.execute('''
                     INSERT INTO historical_prices (date, route, price, departure_date, timestamp, class_type, source_portal, airline, flight_code) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (today_str, db_route, onward_fare, travel_date, now_ts, request.class_type, portal, airline, flight_code))
                 saved_prices.append({"route": db_route, "price": onward_fare})
                 
@@ -366,7 +366,7 @@ def scheduled_scrape():
                 now_ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute('''
                     INSERT INTO historical_prices (date, route, price, departure_date, timestamp, class_type) 
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                 ''', (today_str, db_route, onward_fare, travel_date, now_ts, "economy"))
                 saved += 1
                 

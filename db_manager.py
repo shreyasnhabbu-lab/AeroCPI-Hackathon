@@ -1,34 +1,17 @@
-import sqlite3
+import psycopg2
 import os
 
-DB_NAME = "phantom_airfares.db"
+DATABASE_URL = "postgresql://neondb_owner:npg_BR1ro8vGHAND@ep-long-frog-az4ccszz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS airfares (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            route TEXT NOT NULL,
-            date TEXT NOT NULL,
-            price REAL,
-            status TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    pass # Already initialized via migration script
 
 def save_airfare(data: dict):
-    """
-    Accepts exact dictionary contract:
-    {"route": "BLR-DEL", "date": "2026-10-01", "price": 5400, "status": "success"}
-    """
-    conn = sqlite3.connect(DB_NAME)
+    conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO airfares (route, date, price, status)
-        VALUES (?, ?, ?, ?)
-    """, (data.get("route"), data.get("date"), data.get("price"), data.get("status")))
+        INSERT INTO historical_prices (route, date, price, class_type, source_portal)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (data.get("route"), data.get("date"), data.get("price"), "economy", "Mock"))
     conn.commit()
     conn.close()
