@@ -881,7 +881,7 @@ async function fetchAdminLogs() {
             // Display oldest to newest
             logArray.reverse().forEach(log => {
                 const ts = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false});
-                logHtml += `<p>[${ts}] Fetching ${log.route} (ID: ${log.rowid})... <span class="text-emerald-400">200 OK</span></p>`;
+                logHtml += `<p>[${ts}] Fetching ${log.route} (ID: ${log.id})... <span class="text-emerald-400">200 OK</span></p>`;
                 logHtml += `<p>[${ts}] Extracted lowest fare: ₹${log.price} for departure ${log.departure_date}</p>`;
             });
             container.innerHTML = logHtml;
