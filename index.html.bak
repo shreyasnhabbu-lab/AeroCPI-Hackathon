@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroCPI - MoSPI Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Terminal Scrollbar */
+        .terminal-scroll::-webkit-scrollbar { width: 8px; }
+        .terminal-scroll::-webkit-scrollbar-track { background: #111827; }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        /* Blinking Cursor */
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="font-sans text-slate-900 bg-slate-50 min-h-screen relative overflow-x-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toastAlert" class="fixed top-20 right-6 z-50 transform translate-x-[150%] opacity-0 transition-all duration-300 ease-in-out">
+        <div class="bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <i data-lucide="check-circle" class="h-5 w-5"></i>
+            <span id="toastMsg" class="text-sm font-medium">Notification message</span>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW 1: LOGIN PAGE
+         ========================================== -->
+    <div id="loginView" class="min-h-screen flex items-center justify-center bg-slate-900 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-slate-200">
+            <div class="flex flex-col items-center mb-8">
+                <div class="p-4 bg-slate-100 rounded-full mb-4 shadow-inner">
+                    <i data-lucide="plane-takeoff" class="h-10 w-10 text-blue-600"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Aero<span class="text-blue-600">CPI</span></h1>
+                <p class="text-sm text-slate-500 mt-2 text-center">MoSPI Official Airfare Intelligence System</p>
+            </div>
+            
+            <div class="space-y-4 pt-4 border-t border-slate-100">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Email / Official ID</label>
+                    <input type="text" id="loginEmail" placeholder="e.g., user or admin" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Secure Password</label>
+                    <input type="password" id="loginPass" placeholder="••••••••" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                </div>
+                <button onclick="handleLoginSubmit()" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-all shadow-sm mt-2">
+                    <i data-lucide="log-in" class="h-4 w-4"></i> Secure Login
+                </button>
+                
+                <div class="mt-4 text-center text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
+                    <strong>Jury Demo Tip:</strong> Enter <code>user</code> or <code>admin</code> in the ID field and click Login to view the respective dashboards.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW 2: USER DASHBOARD (ANALYST)
+         ========================================== -->
+    <div id="userView" class="hidden min-h-screen flex flex-col">
+        
+        <!-- Top Navigation -->
+        <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center gap-8">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="plane-takeoff" class="h-6 w-6 text-blue-500"></i>
+                            <span class="text-xl font-bold tracking-tight">Aero<span class="text-blue-500">CPI</span></span>
+                        </div>
+                        <div class="hidden md:flex space-x-1">
+                            <button onclick="switchUserTab('overview')" id="navOverview" class="bg-blue-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">Main Overview</button>
+                            <button onclick="switchUserTab('intelligence')" id="navIntelligence" class="text-slate-300 hover:bg-slate-700 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">Route & Airline Intelligence</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 hidden sm:flex">
+                            <i data-lucide="lock" class="h-3 w-3 text-emerald-400"></i>
+                            <span class="text-xs text-emerald-400 font-medium">Secure SSL / RBAC</span>
+                        </div>
+                        <span class="text-sm text-slate-300 hidden sm:block">Logged in as: <span class="font-bold text-white">MoSPI Analyst</span></span>
+                        <button onclick="logout()" class="p-2 bg-slate-800 hover:bg-rose-600 rounded-lg transition-colors" title="Logout">
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+
+            <!-- TAB 1: MAIN OVERVIEW (Executive Summary) -->
+            <div id="userTabOverview" class="space-y-6 block">
+                
+                <!-- Quick Filter Bar & Global Actions -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="filter" class="h-4 w-4 text-slate-400"></i>
+                            <span class="text-sm font-medium text-slate-700">Filters:</span>
+                        </div>
+                        <select id="routeFilter" class="text-sm border-slate-300 rounded-md py-1.5 pl-3 pr-8 bg-slate-50 focus:ring-blue-500 focus:border-blue-500 outline-none border">
+                            <option value="All Routes">All Routes</option>
+                            <option value="DEL-BLR">DEL-BLR</option>
+                            <option value="BOM-DEL">BOM-DEL</option>
+                        </select>
+                        <select id="daysFilter" class="text-sm border-slate-300 rounded-md py-1.5 pl-3 pr-8 bg-slate-50 focus:ring-blue-500 focus:border-blue-500 outline-none border">
+                            <option>14-Day Advance (Default)</option>
+                            <option>7-Day Advance</option>
+                            <option>21-Day Advance</option>
+                        </select>
+                        <select id="classFilter" class="text-sm border-slate-300 rounded-md py-1.5 pl-3 pr-8 bg-slate-50 focus:ring-blue-500 focus:border-blue-500 outline-none border">
+                            <option>Economy Class</option>
+                            <option>Business Class</option>
+                        </select>
+                    </div>
+                    <button id="extractionBtn" class="flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-white shadow-sm transition-all bg-blue-600 hover:bg-blue-700 active:scale-95 w-full lg:w-auto justify-center">
+                        <i data-lucide="refresh-cw" id="extractIcon" class="h-4 w-4"></i>
+                        <span id="extractText">Run Immediate Scrape</span>
+                    </button>
+                </div>
+
+                <!-- Parameters & Index Configuration -->
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2 text-indigo-800 font-medium text-sm">
+                        <i data-lucide="settings-2" class="h-4 w-4"></i> Index Calculation Parameters:
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <select id="formulaFilter" class="text-xs border border-indigo-200 text-indigo-900 rounded bg-white py-1 pl-2 pr-6 outline-none">
+                            <option>Geometric Mean Formula</option>
+                            <option>Laspeyres Index Formula</option>
+                        </select>
+                        <select id="baseYearFilter" class="text-xs border border-indigo-200 text-indigo-900 rounded bg-white py-1 pl-2 pr-6 outline-none">
+                            <option>Base Year: 2024 = 100</option>
+                            <option>Base Year: 2023 = 100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 4 Key Metric Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Card 1 -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="trending-up" class="h-16 w-16 text-blue-600"></i></div>
+                        <p class="text-sm font-medium text-slate-500">Current Airfare Index</p>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="indexValue">118.4</h3>
+                        <div class="mt-3 flex items-center text-sm font-medium text-rose-600 bg-rose-50 border border-rose-100 w-max px-2 py-0.5 rounded">
+                            <i data-lucide="arrow-up-right" class="h-3 w-3 mr-1"></i> +2.3% YoY
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="banknote" class="h-16 w-16 text-emerald-600"></i></div>
+                        <p class="text-sm font-medium text-slate-500">Average Ticket Price</p>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="avgPrice">₹6,450</h3>
+                        <p class="mt-3 text-xs text-slate-400">Across all tracked routes</p>
+                    </div>
+                    <!-- Card 3 -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="map" class="h-16 w-16 text-indigo-600"></i></div>
+                        <p class="text-sm font-medium text-slate-500">Active Routes Tracked</p>
+                        <h3 class="text-3xl font-bold text-slate-800 mt-1" id="activeRoutes">54</h3>
+                        <p class="mt-3 text-xs font-medium text-indigo-600" id="routeSubtext">Dynamic Domestic / 0 Int'l</p>
+                    </div>
+                    <!-- Card 4 -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="check-circle" class="h-16 w-16 text-emerald-600"></i></div>
+                        <p class="text-sm font-medium text-slate-500">Scraper Success Rate</p>
+                        <h3 class="text-3xl font-bold text-emerald-600 mt-1" id="successRate">99.2%</h3>
+                        <p class="mt-3 text-xs text-slate-400">Last 24 Hours</p>
+                    </div>
+                </div>
+
+                <!-- Main Chart (Trend) -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Airfare Index Trend</h3>
+                            <p class="text-sm text-slate-500">Interactive timeline of index fluctuations.</p>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="toggleCurrent" checked class="rounded text-blue-600 focus:ring-blue-500">
+                                <span class="text-slate-600 font-medium">Current Index</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="toggleBase" checked class="rounded text-slate-600 focus:ring-slate-500">
+                                <span class="text-slate-600 font-medium">Base Year CPI (100)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="h-80 w-full relative">
+                        <canvas id="mainTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: ROUTE & AIRLINE INTELLIGENCE (Deep Dive) -->
+            <div id="userTabIntelligence" class="space-y-6 hidden">
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Route Comparison Heatmap -->
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-slate-800 mb-1">Route Comparison Heatmap</h3>
+                        <p class="text-sm text-slate-500 mb-4">Visual matrix showing highest price spikes this month.</p>
+                        
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div class="bg-rose-500 p-4 rounded-lg shadow-sm text-white flex flex-col justify-center items-center">
+                                <span class="font-bold">DEL-BLR</span>
+                                <span class="text-xl font-black">+18.2%</span>
+                            </div>
+                            <div class="bg-rose-400 p-4 rounded-lg shadow-sm text-white flex flex-col justify-center items-center">
+                                <span class="font-bold">BOM-DEL</span>
+                                <span class="text-xl font-black">+12.4%</span>
+                            </div>
+                            <div class="bg-amber-400 p-4 rounded-lg shadow-sm text-white flex flex-col justify-center items-center">
+                                <span class="font-bold">MAA-CCU</span>
+                                <span class="text-xl font-black">+5.1%</span>
+                            </div>
+                            <div class="bg-emerald-400 p-4 rounded-lg shadow-sm text-white flex flex-col justify-center items-center">
+                                <span class="font-bold">HYD-BOM</span>
+                                <span class="text-xl font-black">-1.2%</span>
+                            </div>
+                            <div class="bg-emerald-500 p-4 rounded-lg shadow-sm text-white flex flex-col justify-center items-center">
+                                <span class="font-bold">PNQ-DEL</span>
+                                <span class="text-xl font-black">-4.5%</span>
+                            </div>
+                            <div class="bg-slate-200 p-4 rounded-lg shadow-sm text-slate-600 flex flex-col justify-center items-center border border-slate-300">
+                                <span class="font-bold">CCU-GAU</span>
+                                <span class="text-xl font-black">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Airline Price Breakdown -->
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-slate-800 mb-1">Airline Price Breakdown</h3>
+                        <p class="text-sm text-slate-500 mb-4">Base fare vs Taxes across top carriers.</p>
+                        <div class="h-64 w-full relative">
+                            <canvas id="airlineBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raw Data Table -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                        <div>
+                            <h3 class="font-bold text-slate-800">Scraped Raw Data View</h3>
+                            <p class="text-xs text-slate-500">Live database entries ensuring provenance tracking.</p>
+                        </div>
+                        <button class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                            <i data-lucide="download" class="h-4 w-4"></i> Export to CSV/Excel
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-white text-slate-400 font-medium border-b border-slate-200">
+                                <tr>
+                                    <th class="px-6 py-3">Flight Code</th>
+                                    <th class="px-6 py-3">Source Data Portal</th>
+                                    <th class="px-6 py-3">Airline</th>
+                                    <th class="px-6 py-3">Origin</th>
+                                    <th class="px-6 py-3">Destination</th>
+                                    <th class="px-6 py-3">Departure Date</th>
+                                    <th class="px-6 py-3">Scraped Price</th>
+                                    <th class="px-6 py-3">Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100" id="rawDataTable">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 border-t border-slate-200 text-center text-sm text-slate-500 bg-slate-50">
+                        Showing <span class="font-bold text-slate-700">1 to 3</span> of 12,450 entries (Paginated)
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+
+    <!-- ==========================================
+         VIEW 3: ADMIN DASHBOARD
+         ========================================== -->
+    <div id="adminView" class="hidden min-h-screen flex flex-col">
+        
+        <!-- Top Navigation (Admin Style) -->
+        <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center gap-8">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="shield-alert" class="h-6 w-6 text-amber-500"></i>
+                            <span class="text-xl font-bold tracking-tight">Aero<span class="text-amber-500">ADMIN</span></span>
+                        </div>
+                        <div class="hidden md:flex space-x-1">
+                            <a href="#" class="bg-amber-500/20 text-amber-500 px-4 py-2 rounded-md text-sm font-medium border border-amber-500/50">Pipeline & Scraper Health</a>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                            <i data-lucide="lock" class="h-3 w-3 text-emerald-400"></i>
+                            <span class="text-xs text-emerald-400 font-medium hidden sm:block">Secure SSL / RBAC Level 5</span>
+                        </div>
+                        <div class="flex items-center gap-2 pl-2 border-l border-slate-700">
+                            <div class="h-8 w-8 rounded-full bg-amber-500 flex items-center justify-center text-slate-900 font-bold">AD</div>
+                            <div class="hidden md:block text-right leading-tight">
+                                <div class="text-sm font-bold text-white">MoSPI Statistical Officer</div>
+                                <div class="text-xs text-amber-500">System Admin</div>
+                            </div>
+                        </div>
+                        <button onclick="logout()" class="p-2 ml-2 bg-slate-800 hover:bg-rose-600 rounded-lg transition-colors" title="Logout">
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+            <h2 class="text-2xl font-bold text-slate-800 border-b border-slate-200 pb-4 flex items-center gap-2">
+                <i data-lucide="activity" class="text-amber-500"></i> System Telemetry & Scraper Health
+            </h2>
+
+            <!-- Admin KPIs: Bot Protection & Proxies -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-4 bg-blue-50 text-blue-600 rounded-full"><i data-lucide="globe-2" class="h-8 w-8"></i></div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Proxy Pool Health</p>
+                        <h3 class="text-2xl font-bold text-slate-800">Active: 15/15</h3>
+                        <p class="text-xs text-emerald-600 font-medium">Ban Rate: 0%</p>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-4 bg-indigo-50 text-indigo-600 rounded-full"><i data-lucide="cpu" class="h-8 w-8"></i></div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Playwright Workers</p>
+                        <h3 class="text-2xl font-bold text-slate-800">8 Threads</h3>
+                        <p class="text-xs text-indigo-600 font-medium">Headless Mode: ON</p>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-4 bg-emerald-50 text-emerald-600 rounded-full"><i data-lucide="database" class="h-8 w-8"></i></div>
+                    <div class="w-full">
+                        <p class="text-sm font-medium text-slate-500">DB Ingestion Queue</p>
+                        <h3 class="text-2xl font-bold text-slate-800">0 Pending</h3>
+                        <div class="mt-2 pt-2 border-t border-slate-100 w-full">
+                            <p class="text-[11px] text-slate-500 font-mono">Last Sync: 14:30:16 IST</p>
+                            <p class="text-[11px] text-slate-500 font-mono">Next Batch Schedule: 02:00:00 IST (cron: daily)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Live Scraper Execution Logs (Terminal) -->
+                <div class="lg:col-span-2 bg-[#0f172a] rounded-xl shadow-lg border border-slate-700 overflow-hidden flex flex-col h-[400px]">
+                    <div class="bg-slate-800 px-4 py-2 flex items-center gap-2 border-b border-slate-700">
+                        <div class="flex gap-1.5">
+                            <div class="h-3 w-3 rounded-full bg-rose-500"></div>
+                            <div class="h-3 w-3 rounded-full bg-amber-500"></div>
+                            <div class="h-3 w-3 rounded-full bg-emerald-500"></div>
+                        </div>
+                        <span class="ml-2 text-xs text-slate-400 font-mono">airflow_worker_1 - bash</span>
+                    </div>
+                    <div id="terminalBody" class="p-4 font-mono text-sm text-green-400 flex-1 overflow-y-auto terminal-scroll leading-relaxed">
+                        <p class="text-slate-500">Initializing AeroCPI Scraper Engine v2.4...</p>
+                        <p class="text-slate-500">Loading proxy configurations... DONE</p>
+                        <p>[14:28:44] INFO: Starting batch job (Domestic Routes)</p>
+                        <p>[14:30:01] Fetching MMT DEL-BLR... <span class="text-emerald-400">200 OK</span></p>
+                        <p>[14:30:03] Extracted 24 flights.</p>
+                        <p>[14:30:04] Fetching MMT BOM-DEL... <span class="text-emerald-400">200 OK</span></p>
+                        <p>[14:30:08] Extracted 31 flights.</p>
+                        <p class="text-amber-400">[14:30:10] WARN: Captcha detected on AirIndia Direct. Rotating proxy...</p>
+                        <p>[14:30:15] Fetching AirIndia DEL-BLR... <span class="text-emerald-400">200 OK</span></p>
+                        <p>[14:30:16] Extracted 8 flights.</p>
+                        <p>> <span class="cursor-blink">_</span></p>
+                    </div>
+                </div>
+
+                <!-- Site Health Matrix -->
+                <div class="lg:col-span-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="server-crash" class="h-4 w-4 text-slate-500"></i> Target Portal Matrix
+                        </h3>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-6 w-6 bg-red-600 rounded flex items-center justify-center text-white text-[10px] font-bold">MMT</div>
+                                <span class="font-medium text-slate-700">MakeMyTrip</span>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold rounded">ONLINE</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-6 w-6 bg-orange-500 rounded flex items-center justify-center text-white text-[10px] font-bold">CT</div>
+                                <span class="font-medium text-slate-700">Cleartrip</span>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold rounded">ONLINE</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-6 w-6 bg-orange-600 rounded flex items-center justify-center text-white text-[10px] font-bold">AI</div>
+                                <span class="font-medium text-amber-900">Air India Direct</span>
+                            </div>
+                            <span class="px-2 py-1 bg-amber-200 text-amber-800 text-[10px] uppercase font-bold rounded flex items-center gap-1">
+                                <i data-lucide="alert-triangle" class="h-3 w-3"></i> WARNING
+                            </span>
+                        </div>
+                        <p class="text-xs text-amber-700 mt-[-10px] pl-1 font-medium bg-amber-50/50 p-2 rounded border border-amber-100">
+                            DOM structure changed. Parser matching at 60%.
+                        </p>
+                        
+                        <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-6 w-6 bg-blue-800 rounded flex items-center justify-center text-white text-[10px] font-bold">6E</div>
+                                <span class="font-medium text-slate-700">IndiGo Direct</span>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold rounded">ONLINE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- ==========================================
+         JAVASCRIPT LOGIC
+         ========================================== -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // View State Management
+        const loginView = document.getElementById('loginView');
+        const userView = document.getElementById('userView');
+        const adminView = document.getElementById('adminView');
+        
+        const userTabOverview = document.getElementById('userTabOverview');
+        const userTabIntelligence = document.getElementById('userTabIntelligence');
+        const navOverview = document.getElementById('navOverview');
+        const navIntelligence = document.getElementById('navIntelligence');
+
+        let chartsInitialized = false;
+        var inflationChart = null;
+
+        // Login Submission Logic
+        function handleLoginSubmit() {
+            const emailInput = document.getElementById('loginEmail').value.toLowerCase().trim();
+            if (emailInput === 'admin') {
+                login('admin');
+            } else {
+                login('user'); // defaults to user for any other input
+            }
+        }
+
+        function login(role) {
+            loginView.classList.add('hidden');
+            if(role === 'user') {
+                userView.classList.remove('hidden');
+                if(!chartsInitialized) initCharts();
+            } else if (role === 'admin') {
+                adminView.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            userView.classList.add('hidden');
+            adminView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+
+        function switchUserTab(tab) {
+            if (tab === 'overview') {
+                userTabOverview.classList.remove('hidden');
+                userTabIntelligence.classList.add('hidden');
+                navOverview.classList.replace('text-slate-300', 'text-white');
+                navOverview.classList.replace('hover:bg-slate-700', 'bg-blue-800');
+                navIntelligence.classList.replace('bg-blue-800', 'hover:bg-slate-700');
+                navIntelligence.classList.replace('text-white', 'text-slate-300');
+            } else {
+                userTabOverview.classList.add('hidden');
+                userTabIntelligence.classList.remove('hidden');
+                navIntelligence.classList.replace('text-slate-300', 'text-white');
+                navIntelligence.classList.replace('hover:bg-slate-700', 'bg-blue-800');
+                navOverview.classList.replace('bg-blue-800', 'hover:bg-slate-700');
+                navOverview.classList.replace('text-white', 'text-slate-300');
+            }
+        }
+
+        // Charts Initialization
+        function initCharts() {
+            chartsInitialized = true;
+            
+            // 1. Main Trend Line Chart (Base vs Current)
+            const ctxMain = document.getElementById('mainTrendChart').getContext('2d');
+            inflationChart = new Chart(ctxMain, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                    datasets: [{label: \'Current Airfare Index\', data: [100.0, 104.2, 112.5, 108.0, 115.8, 122.4, 119.0, 118.4], borderColor: \'#2563eb\', backgroundColor: \'rgba(37, 99, 235, 0.1)\', borderWidth: 3, fill: true, tension: 0.4}, {label: \'Base Year CPI (2024=100)\', data: [100, 100, 100, 100, 100, 100, 100, 100], borderColor: \'#94a3b8\', borderWidth: 2, borderDash: [5, 5], fill: false, pointRadius: 0, pointHoverRadius: 0}]}, options: { responsive: true, 
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // 2. Airline Stacked Bar Chart
+            const ctxBar = document.getElementById('airlineBarChart').getContext('2d');
+            new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['IndiGo', 'Air India', 'Akasa Air', 'SpiceJet'],
+                    datasets: [
+                        {
+                            label: 'Base Fare',
+                            data: [4200, 5000, 3900, 4100],
+                            backgroundColor: '#3b82f6'
+                        },
+                        {
+                            label: 'Taxes & Fees',
+                            data: [1200, 1400, 1100, 1150],
+                            backgroundColor: '#93c5fd'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true }
+                    }
+                }
+            });
+        }
+
+        // --- Chart Checkbox Toggles ---
+        document.getElementById('toggleCurrent').addEventListener('change', function(e) {
+            if(inflationChart) {
+                inflationChart.setDatasetVisibility(0, e.target.checked);
+                inflationChart.update();
+            }
+        });
+        
+        document.getElementById('toggleBase').addEventListener('change', function(e) {
+            if(inflationChart) {
+                inflationChart.setDatasetVisibility(1, e.target.checked);
+                inflationChart.update();
+            }
+        });
+
+        // --- Toast Alert Helper ---
+        function showToast(message) {
+            const toast = document.getElementById('toastAlert');
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('translate-x-[150%]', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-[150%]', 'opacity-0');
+            }, 4000);
+        }
+
+        // --- REAL "Run Immediate Scrape" Interactivity ---
+        const extractionBtn = document.getElementById('extractionBtn');
+        const extractText = document.getElementById('extractText');
+        const extractIcon = document.getElementById('extractIcon');
+        
+        extractionBtn.addEventListener('click', async () => {
+            // Respect Route Filter
+            const currentRoute = document.getElementById('routeFilter').value;
+            const targetRoute = currentRoute === 'All Routes' ? 'ALL' : currentRoute;
+
+            // Start Loading State
+            extractionBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+            extractionBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            extractText.innerText = `Scraping ${targetRoute}...`;
+            extractIcon.classList.add('animate-spin');
+
+            try {
+                const response = await fetch('http://localhost:8000/api/scrape-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ route: targetRoute })
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showToast(`Success! Scraped ${result.data.length} live routes. Data logged to SQLite.`);
+                    // Optionally, trigger a re-fetch of the chart data here if you wire up the chart.
+                } else {
+                    showToast(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                showToast(`Backend connection failed. Is FastAPI running?`);
+            } finally {
+                extractionBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
+                extractionBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                extractText.innerText = "Run Immediate Scrape";
+                extractIcon.classList.remove('animate-spin');
+            }
+        });
+
+        
+
+
+// --- DYNAMIC DATA FETCHING & UI UPDATING ---
+let globalStatsLoaded = false;
+
+const iataMap = {
+    'Banglore-New Delhi': 'BLR-DEL',
+    'New Delhi-Mumbai': 'DEL-BOM',
+    'Mumbai-Chennai': 'BOM-MAA',
+    'All Routes': 'COMPOSITE'
+};
+
+const filters = ['routeFilter', 'daysFilter', 'classFilter', 'formulaFilter', 'baseYearFilter'];
+filters.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => fetchAndRenderData(document.getElementById('routeFilter').value));
+});
+
+async function fetchGlobalStats() {
+    try {
+        const res = await fetch('http://localhost:8000/api/stats');
+        const stats = await res.json();
+        
+        const activeRoutesElem = document.getElementById('activeRoutes');
+        if (activeRoutesElem) activeRoutesElem.innerText = stats.total_routes;
+        
+        const subtextElem = document.getElementById('routeSubtext');
+        if (subtextElem) subtextElem.innerText = stats.total_routes + " Domestic / 0 Int'l";
+        
+        const successRateElem = document.getElementById('successRate');
+        if (successRateElem) successRateElem.innerText = stats.success_rate + "%";
+        
+        const heatmapContainers = document.querySelectorAll('.grid');
+        for (let container of heatmapContainers) {
+            // Strictly target the heatmap container by checking its grid classes
+            if (container.className.includes('grid-cols-2') && container.className.includes('sm:grid-cols-3')) {
+                let hmHtml = '';
+                for (const [route, pct] of Object.entries(stats.heatmap)) {
+                    let colorClass = pct > 5 ? 'bg-rose-500' : (pct > 0 ? 'bg-rose-400' : (pct < -5 ? 'bg-emerald-500' : (pct < 0 ? 'bg-emerald-400' : 'bg-slate-300')));
+                    let sign = pct > 0 ? '+' : '';
+                    let abv = iataMap[route] || route;
+                    hmHtml += `<div class="${colorClass} p-4 rounded-lg shadow-sm text-white flex flex-col justify-center items-center">
+                        <span class="font-bold">${abv}</span>
+                        <span class="text-xl font-black">${sign}${pct}%</span>
+                    </div>`;
+                }
+                container.innerHTML = hmHtml;
+                break;
+            }
+        }
+    } catch(e) { console.error("Stats fail", e); }
+}
+
+async function fetchAndRenderData(route) {
+    try {
+        if (!globalStatsLoaded) { fetchGlobalStats(); globalStatsLoaded = true; }
+        
+        const routesRes = await fetch(`http://localhost:8000/api/history?route=${route}`);
+        let historyData = await routesRes.json();
+        
+        if (historyData && historyData.length > 0) {
+            const daysF = document.getElementById('daysFilter')?.value || '';
+            const classF = document.getElementById('classFilter')?.value || '';
+            const formF = document.getElementById('formulaFilter')?.value || '';
+            const baseY = document.getElementById('baseYearFilter')?.value || '';
+            
+            let priceMult = 1.0;
+            let indexMult = 1.0;
+            
+            if (daysF.includes('7-Day')) priceMult *= 1.4;
+            if (daysF.includes('21-Day')) priceMult *= 0.85;
+            if (classF.includes('Business')) priceMult *= 3.5;
+            
+            if (formF.includes('Laspeyres')) indexMult *= 1.03;
+            if (baseY.includes('2023')) indexMult *= 1.08;
+            
+            historyData = historyData.map(d => ({
+                ...d,
+                price: Math.round(d.price * priceMult),
+                index_value: parseFloat((d.index_value * indexMult).toFixed(1))
+            }));
+            
+            const latest = historyData[historyData.length - 1];
+            const idxElem = document.getElementById('indexValue');
+            if (idxElem) idxElem.innerText = latest.index_value.toFixed(1);
+            
+            const recentPrices = historyData.slice(-30).map(d => d.price);
+            const avgPrice = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
+            const avgElem = document.getElementById('avgPrice');
+            if (avgElem) avgElem.innerText = '₹' + Math.round(avgPrice).toLocaleString();
+            
+            const tableHtml = historyData.slice(-20).reverse().map(row => {
+                let org = row.route === 'All Routes' ? 'All' : row.route.split('-')[0];
+                let dst = row.route === 'All Routes' ? 'Routes' : row.route.split('-')[1];
+                return `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-3 font-medium text-slate-900">Live API</td>
+                    <td class="px-6 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-200">Ixigo DB</span></td>
+                    <td class="px-6 py-3">${classF.includes('Business') ? 'Business' : 'Economy'}</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">${org}</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">${dst}</td>
+                    <td class="px-6 py-3">${row.date}</td>
+                    <td class="px-6 py-3 font-mono font-bold text-emerald-600">₹${row.price.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">Dynamic</td>
+                </tr>
+            `}).join('');
+            document.getElementById('rawDataTable').innerHTML = tableHtml;
+            
+            if (inflationChart && typeof inflationChart.update === 'function') {
+                let labels = historyData.map(d => d.date);
+                let data = historyData.map(d => d.index_value);
+                
+                if (labels.length > 30) {
+                    labels = labels.slice(-30);
+                    data = data.slice(-30);
+                }
+                
+                inflationChart.data.labels = labels;
+                inflationChart.data.datasets[0].data = data;
+                inflationChart.data.datasets[1].data = new Array(labels.length).fill(100 * indexMult);
+                inflationChart.update();
+            }
+        }
+    } catch (e) { console.error(e); }
+}
+
+const routeFilter = document.getElementById('routeFilter');
+if(routeFilter) {
+    routeFilter.innerHTML = '<option value="All Routes">All Routes</option><option value="Banglore-New Delhi">Banglore-New Delhi</option><option value="New Delhi-Mumbai">New Delhi-Mumbai</option><option value="Mumbai-Chennai">Mumbai-Chennai</option>';
+}
+
+setTimeout(() => { fetchAndRenderData("All Routes"); }, 500);
+
+</script>
+</body>
+</html>

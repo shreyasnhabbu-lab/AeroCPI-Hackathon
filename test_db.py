@@ -1,0 +1,10 @@
+import sqlite3
+conn = sqlite3.connect('aero_cpi.db')
+c = conn.cursor()
+c.execute("PRAGMA table_info(historical_prices)")
+cols = c.fetchall()
+print("Columns:", [c[1] for c in cols])
+c.execute("SELECT COUNT(*) FROM historical_prices")
+print("Total rows:", c.fetchone()[0])
+c.execute("SELECT DISTINCT route FROM historical_prices")
+print("Routes:", c.fetchall())

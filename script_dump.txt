@@ -1,0 +1,353 @@
+<script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // View State Management
+        const loginView = document.getElementById('loginView');
+        const userView = document.getElementById('userView');
+        const adminView = document.getElementById('adminView');
+        
+        const userTabOverview = document.getElementById('userTabOverview');
+        const userTabIntelligence = document.getElementById('userTabIntelligence');
+        const navOverview = document.getElementById('navOverview');
+        const navIntelligence = document.getElementById('navIntelligence');
+
+        let chartsInitialized = false;
+        let inflationChart = null;
+
+        // Login Submission Logic
+        function handleLoginSubmit() {
+            const emailInput = document.getElementById('loginEmail').value.toLowerCase().trim();
+            if (emailInput === 'admin') {
+                login('admin');
+            } else {
+                login('user'); // defaults to user for any other input
+            }
+        }
+
+        function login(role) {
+            loginView.classList.add('hidden');
+            if(role === 'user') {
+                userView.classList.remove('hidden');
+                if(!chartsInitialized) initCharts();
+            } else if (role === 'admin') {
+                adminView.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            userView.classList.add('hidden');
+            adminView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+
+        function switchUserTab(tab) {
+            if (tab === 'overview') {
+                userTabOverview.classList.remove('hidden');
+                userTabIntelligence.classList.add('hidden');
+                navOverview.classList.replace('text-slate-300', 'text-white');
+                navOverview.classList.replace('hover:bg-slate-700', 'bg-blue-800');
+                navIntelligence.classList.replace('bg-blue-800', 'hover:bg-slate-700');
+                navIntelligence.classList.replace('text-white', 'text-slate-300');
+            } else {
+                userTabOverview.classList.add('hidden');
+                userTabIntelligence.classList.remove('hidden');
+                navIntelligence.classList.replace('text-slate-300', 'text-white');
+                navIntelligence.classList.replace('hover:bg-slate-700', 'bg-blue-800');
+                navOverview.classList.replace('bg-blue-800', 'hover:bg-slate-700');
+                navOverview.classList.replace('text-white', 'text-slate-300');
+            }
+        }
+
+        // Charts Initialization
+        function initCharts() {
+            chartsInitialized = true;
+            
+            // 1. Main Trend Line Chart (Base vs Current)
+            const ctxMain = document.getElementById('mainTrendChart').getContext('2d');
+            inflationChart = new Chart(ctxMain, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                    datasets: [
+                        {
+                            label: 'Current Airfare Index',
+                            data: [100.0, 104.2, 112.5, 108.0, 115.8, 122.4, 119.0, 118.4],
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Base Year CPI (2024=100)',
+                            data: [100, 100, 100, 100, 100, 100, 100, 100], 
+                            borderColor: '#94a3b8',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // 2. Airline Stacked Bar Chart
+            const ctxBar = document.getElementById('airlineBarChart').getContext('2d');
+            new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['IndiGo', 'Air India', 'Akasa Air', 'SpiceJet'],
+                    datasets: [
+                        {
+                            label: 'Base Fare',
+                            data: [4200, 5000, 3900, 4100],
+                            backgroundColor: '#3b82f6'
+                        },
+                        {
+                            label: 'Taxes & Fees',
+                            data: [1200, 1400, 1100, 1150],
+                            backgroundColor: '#93c5fd'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true }
+                    }
+                }
+            });
+        }
+
+        // --- Chart Checkbox Toggles ---
+        document.getElementById('toggleCurrent').addEventListener('change', function(e) {
+            if(inflationChart) {
+                inflationChart.setDatasetVisibility(0, e.target.checked);
+                inflationChart.update();
+            }
+        });
+        
+        document.getElementById('toggleBase').addEventListener('change', function(e) {
+            if(inflationChart) {
+                inflationChart.setDatasetVisibility(1, e.target.checked);
+                inflationChart.update();
+            }
+        });
+
+        // --- Toast Alert Helper ---
+        function showToast(message) {
+            const toast = document.getElementById('toastAlert');
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('translate-x-[150%]', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-[150%]', 'opacity-0');
+            }, 4000);
+        }
+
+        // --- REAL "Run Immediate Scrape" Interactivity ---
+        const extractionBtn = document.getElementById('extractionBtn');
+        const extractText = document.getElementById('extractText');
+        const extractIcon = document.getElementById('extractIcon');
+        
+        extractionBtn.addEventListener('click', async () => {
+            // Start Loading State
+            extractionBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+            extractionBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            extractText.innerText = "Scraping Live from Ixigo...";
+            extractIcon.classList.add('animate-spin');
+
+            try {
+                // Call Team B's API which triggers Team A's Stealth Scraper!
+                const response = await fetch('http://localhost:8000/api/scrape-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ route: 'ALL' })
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showToast(`Success! Scraped ${result.data.length} live routes. Data logged to SQLite.`);
+                    // Optionally, trigger a re-fetch of the chart data here if you wire up the chart.
+                } else {
+                    showToast(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                showToast(`Backend connection failed. Is FastAPI running?`);
+            } finally {
+                extractionBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
+                extractionBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                extractText.innerText = "Run Immediate Scrape";
+                extractIcon.classList.remove('animate-spin');
+            }
+        });
+
+        // --- Fake Route Filtering in Table ---
+        const rawDataTable = document.getElementById('rawDataTable');
+        const routeFilter = document.getElementById('routeFilter');
+
+        const tableDataSets = {
+            'All Routes': `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-3 font-medium text-slate-900">6E-2131</td>
+                    <td class="px-6 py-3"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold border border-red-200">MakeMyTrip</span></td>
+                    <td class="px-6 py-3">IndiGo</td>
+                    <td class="px-6 py-3">DEL</td>
+                    <td class="px-6 py-3">BLR</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹6,240</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:30:03</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-3 font-medium text-slate-900">AI-803</td>
+                    <td class="px-6 py-3"><span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-bold border border-orange-200">AirIndia Direct</span></td>
+                    <td class="px-6 py-3">Air India</td>
+                    <td class="px-6 py-3">DEL</td>
+                    <td class="px-6 py-3">BLR</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹7,150</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:30:05</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-3 font-medium text-slate-900">QP-1376</td>
+                    <td class="px-6 py-3"><span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-bold border border-orange-200">Cleartrip</span></td>
+                    <td class="px-6 py-3">Akasa Air</td>
+                    <td class="px-6 py-3">BOM</td>
+                    <td class="px-6 py-3">DEL</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹4,890</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:31:12</td>
+                </tr>
+            `,
+            'DEL-BLR': `
+                <tr class="hover:bg-slate-50 transition-colors bg-blue-50/30">
+                    <td class="px-6 py-3 font-medium text-slate-900">6E-2131</td>
+                    <td class="px-6 py-3"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold border border-red-200">MakeMyTrip</span></td>
+                    <td class="px-6 py-3">IndiGo</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">DEL</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">BLR</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹6,240</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:30:03</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors bg-blue-50/30">
+                    <td class="px-6 py-3 font-medium text-slate-900">AI-803</td>
+                    <td class="px-6 py-3"><span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-bold border border-orange-200">AirIndia Direct</span></td>
+                    <td class="px-6 py-3">Air India</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">DEL</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">BLR</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹7,150</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:30:05</td>
+                </tr>
+            `,
+            'BOM-DEL': `
+                <tr class="hover:bg-slate-50 transition-colors bg-blue-50/30">
+                    <td class="px-6 py-3 font-medium text-slate-900">QP-1376</td>
+                    <td class="px-6 py-3"><span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-bold border border-orange-200">Cleartrip</span></td>
+                    <td class="px-6 py-3">Akasa Air</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">BOM</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">DEL</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹4,890</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:31:12</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors bg-blue-50/30">
+                    <td class="px-6 py-3 font-medium text-slate-900">UK-902</td>
+                    <td class="px-6 py-3"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold border border-red-200">MakeMyTrip</span></td>
+                    <td class="px-6 py-3">Vistara</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">BOM</td>
+                    <td class="px-6 py-3 font-bold text-blue-600">DEL</td>
+                    <td class="px-6 py-3">2026-09-24</td>
+                    <td class="px-6 py-3 font-mono font-bold text-slate-800">₹5,200</td>
+                    <td class="px-6 py-3 text-slate-400 text-xs">14:35:10</td>
+                </tr>
+            `
+        };
+
+        // Initialize Table
+        rawDataTable.innerHTML = tableDataSets['All Routes'];
+
+        // Handle Filter Change
+        routeFilter.addEventListener('change', (e) => {
+            const selected = e.target.value;
+            rawDataTable.innerHTML = tableDataSets[selected] || tableDataSets['All Routes'];
+        });
+
+    </script>
+
+<!-- DYNAMIC INJECTION SCRIPT -->
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        console.log("Fetching live data from backend...");
+        
+        // Ensure routeFilter triggers dynamic update
+        const routeFilter = document.getElementById('routeFilter');
+        if (routeFilter) {
+            routeFilter.innerHTML = '<option value="Banglore-New Delhi">Banglore-New Delhi</option><option value="New Delhi-Mumbai">New Delhi-Mumbai</option><option value="Mumbai-Chennai">Mumbai-Chennai</option>';
+            routeFilter.addEventListener('change', (e) => fetchAndRenderData(e.target.value));
+        }
+
+        async function fetchAndRenderData(route) {
+            const routesRes = await fetch(`http://localhost:8000/api/history?route=${route}`);
+            const historyData = await routesRes.json();
+            
+            if (historyData && historyData.length > 0) {
+                // Update Current Index stat
+                const latest = historyData[historyData.length - 1];
+                document.getElementById('indexValue').innerText = latest.index_value.toFixed(1);
+                
+                // Update Table
+                const tableHtml = historyData.slice(-20).reverse().map(row => `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 font-medium text-slate-900">Scraped</td>
+                        <td class="px-6 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-200">Ixigo / API</span></td>
+                        <td class="px-6 py-3">Multiple</td>
+                        <td class="px-6 py-3 font-bold text-blue-600">${row.route.split('-')[0]}</td>
+                        <td class="px-6 py-3 font-bold text-blue-600">${row.route.split('-')[1]}</td>
+                        <td class="px-6 py-3">${row.date}</td>
+                        <td class="px-6 py-3 font-mono font-bold text-slate-800">₹${row.price}</td>
+                        <td class="px-6 py-3 text-slate-400 text-xs">Live</td>
+                    </tr>
+                `).join('');
+                document.getElementById('rawDataTable').innerHTML = tableHtml;
+                
+                // Wait for Chart.js to initialize then update it
+                setTimeout(() => {
+                    if (window.inflationChart) {
+                        window.inflationChart.data.labels = historyData.map(d => d.date);
+                        window.inflationChart.data.datasets[0].data = historyData.map(d => d.index_value);
+                        window.inflationChart.update();
+                    }
+                }, 500);
+            }
+        }
+        
+        // Initial Fetch
+        fetchAndRenderData("Banglore-New Delhi");
+        
+    } catch (e) {
+        console.error("Failed to load dynamic data", e);
+    }
+});
+</script>
+</body>
+
+</html>

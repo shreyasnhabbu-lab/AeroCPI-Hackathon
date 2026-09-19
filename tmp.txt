@@ -1,0 +1,31 @@
+"New Delhi-Mumbai">New Delhi-Mumbai</option><option value="Mumbai-Chennai">Mumbai-Chennai</option>';
+}
+
+// === ADD EVENT LISTENERS FOR FILTERS ===
+// Already handled above, safely skipping duplicate declaration.
+
+
+// setTimeout removed. Handled by initCharts().
+
+
+// Admin Terminal Log Fetching
+async function fetchAdminLogs() {
+    try {
+        const res = await fetch('http://localhost:8000/api/raw-logs');
+        const logs = await res.json();
+        const container = document.getElementById('liveLogsContainer');
+        if (container && logs && logs.length > 0) {
+            let logHtml = '';
+            // Display oldest to newest
+            logs.reverse().forEach(log => {
+                const ts = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false});
+                logHtml += `<p>[${ts}] Fetching ${log.route} (ID: ${log.rowid})... <span class="text-emerald-400">200 OK</span></p>`;
+                logHtml += `<p>[${ts}] Extracted lowest fare: ₹${log.price} for departure ${log.departure_date}</p>`;
+            });
+            container.innerHTML = logHtml;
+            // auto scroll
+            const terminal = document.getElementById('terminalBody');
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+    } catch (e) {
+        console.error('F
