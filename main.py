@@ -24,7 +24,7 @@ def serve_frontend():
 
 
 # Global State for Scraper
-HEADLESS_MODE = False
+HEADLESS_MODE = True
 
 @app.post("/api/toggle-headless")
 def toggle_headless():
