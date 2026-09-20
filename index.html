@@ -805,13 +805,18 @@ function changePage(direction) {
 
 function exportLogsCSV() {
     const filterDays = document.getElementById('logDateFilter') ? document.getElementById('logDateFilter').value : 7;
-    window.location.href = `/api/export-logs?days=${filterDays}`;
+    const currentRoute = document.getElementById('routeFilter') ? document.getElementById('routeFilter').value : 'All Routes';
+    const routeParam = currentRoute === 'All Routes' ? 'ALL' : currentRoute;
+    window.location.href = `/api/export-logs?days=${filterDays}&route=${routeParam}`;
 }
 
 async function fetchLogsData() {
     try {
         const filterDays = document.getElementById('logDateFilter') ? document.getElementById('logDateFilter').value : 7;
-        const res = await fetch(`/api/raw-logs?page=${currentPage}&limit=${logsLimit}&days=${filterDays}`);
+        const currentRoute = document.getElementById('routeFilter') ? document.getElementById('routeFilter').value : 'All Routes';
+        const routeParam = currentRoute === 'All Routes' ? 'ALL' : currentRoute;
+        
+        const res = await fetch(`/api/raw-logs?page=${currentPage}&limit=${logsLimit}&days=${filterDays}&route=${routeParam}`);
         const payload = await res.json();
         
         const logsData = payload.data || [];
