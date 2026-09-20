@@ -287,21 +287,7 @@ def run_scraper(
                 }
                 results.append(entry)
                 
-                # Save into the Phantom Database Contract!
-                if onward_fare:
-                    save_airfare({
-                        "route": f"{source}-{destination}",
-                        "date": travel_date.strftime("%Y-%m-%d"),
-                        "price": onward_fare,
-                        "status": "success"
-                    })
-                else:
-                    save_airfare({
-                        "route": f"{source}-{destination}",
-                        "date": travel_date.strftime("%Y-%m-%d"),
-                        "price": 0,
-                        "status": "failed"
-                    })
+# save_airfare removed to prevent duplicate rows. main.py handles it now.
 
                 fare_display = f"INR {onward_fare}" if onward_fare else "Not Found"
                 print(f"  -> Result: {source}->{destination} (+{offset}d, {travel_date.strftime('%Y-%m-%d')}): {fare_display}")
