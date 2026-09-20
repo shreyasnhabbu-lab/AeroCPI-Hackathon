@@ -167,15 +167,17 @@ def scrape_cheapest_fare(
 
 
 
-def scrape_cheapest_fare_emt(page: Page, source: str, destination: str, travel_date: datetime) -> Optional[dict]:
+def scrape_cheapest_fare_emt(page: Page, source: str, destination: str, travel_date: datetime, class_type: str = "e") -> Optional[dict]:
     dep_date_str = travel_date.strftime("%d/%m/%Y")
+    emt_class = "BUSINESS" if class_type.lower() == "b" else "ECONOMY"
     # https://flight.easemytrip.com/FlightList/Index?srch=BLR-Bangalore-India|DEL-Delhi-India|10/10/2026&px=1-0-0&ccls=ECONOMY&rt=1
-    url = f"https://flight.easemytrip.com/FlightList/Index?srch={source}-City-India|{destination}-City-India|{dep_date_str}&px=1-0-0&ccls=ECONOMY&rt=1"
+    url = f"https://flight.easemytrip.com/FlightList/Index?srch={source}-City-India|{destination}-City-India|{dep_date_str}&px=1-0-0&ccls={emt_class}&rt=1"
     
     print(f"Scraping EaseMyTrip: {source} -> {destination} on {travel_date.strftime('%Y-%m-%d')}...")
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=40000)
-        page.wait_for_timeout(5000)
+        # Wait dynamically for flight prices to appear instead of a blind timeout
+        page.wait_for_selector('.txt-r6-n.exPrc', timeout=30000)
         
         raw_flights = page.evaluate('''() => {
             const priceDivs = Array.from(document.querySelectorAll('.txt-r6-n.exPrc'));
@@ -252,7 +254,7 @@ def run_scraper(
                 onward_fare_ixigo, return_fare = scrape_cheapest_fare(
                     page, source, destination, travel_date, return_date, class_type
                 )
-                onward_fare_emt = scrape_cheapest_fare_emt(page, source, destination, travel_date)
+                onward_fare_emt = scrape_cheapest_fare_emt(page, source, destination, travel_date, class_type)
                 
                 # Determine which portal offered the cheapest fare
                 fares = []

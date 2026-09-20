@@ -87,14 +87,18 @@ def get_history(route: str = "All Routes", class_type: str = "economy"):
 from datetime import datetime, timedelta
 
 @app.get("/api/raw-logs")
-def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7):
+def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7, route: str = "ALL"):
     conn = get_db_connection()
     
+    conditions = []
     if days > 0:
         cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-        where_clause = f"WHERE date >= '{cutoff_date}'"
-    else:
-        where_clause = ""
+        conditions.append(f"date >= '{cutoff_date}'")
+        
+    if route != "ALL":
+        conditions.append(f"route = '{route}'")
+        
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         
     cursor = conn.cursor()
     cursor.execute(f"SELECT COUNT(*) FROM historical_prices {where_clause}")
@@ -107,6 +111,7 @@ def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7):
     conn.close()
     
     return {
+        "status": "success",
         "data": df.to_dict(orient="records"),
         "total": total_records,
         "page": page,
@@ -114,13 +119,17 @@ def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7):
     }
 
 @app.get("/api/export-logs")
-def export_raw_logs(days: int = 7):
+def export_raw_logs(days: int = 7, route: str = "ALL"):
     conn = get_db_connection()
+    conditions = []
     if days > 0:
         cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-        where_clause = f"WHERE date >= '{cutoff_date}'"
-    else:
-        where_clause = ""
+        conditions.append(f"date >= '{cutoff_date}'")
+        
+    if route != "ALL":
+        conditions.append(f"route = '{route}'")
+        
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         
     query = f"SELECT id, date, route, price, COALESCE(departure_date, date) as departure_date, COALESCE(timestamp, date || ' 00:00:00') as timestamp, source_portal, airline, flight_code FROM historical_prices {where_clause} ORDER BY id DESC"
     df = pd.read_sql_query(query, conn)

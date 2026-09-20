@@ -666,8 +666,12 @@
                 
                 if (result.status === 'success') {
                     showToast(`Success! Scraped ${result.data.length} live routes. Data logged to SQLite.`);
-                    // Auto-refresh the dashboard to show the newly scraped entry
+                    // Auto-refresh the dashboard and logs to show the newly scraped entries
                     fetchAndRenderData(document.getElementById('routeFilter').value);
+                    fetchLogsData();
+                    if(typeof fetchAdminLogs === 'function') {
+                        fetchAdminLogs();
+                    }
                 } else {
                     showToast(`Error: ${result.message}`);
                 }
