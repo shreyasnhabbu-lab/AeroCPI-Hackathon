@@ -1,7 +1,7 @@
 import psycopg2
 import os
 
-DATABASE_URL = "postgresql://neondb_owner:npg_BR1ro8vGHAND@ep-long-frog-az4ccszz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def init_db():
     pass # Already initialized via migration script

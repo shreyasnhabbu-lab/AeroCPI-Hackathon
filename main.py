@@ -47,7 +47,7 @@ app.add_middleware(
 )
 
 def get_db_connection():
-    conn = psycopg2.connect("postgresql://neondb_owner:npg_VcZHR5MA1bEP@ep-long-frog-az4ccszz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require")
+    conn = psycopg2.connect(os.environ.get("DATABASE_URL"))
     return conn
 
 @app.get("/api/history")
