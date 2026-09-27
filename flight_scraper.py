@@ -66,11 +66,11 @@ def scrape_cheapest_fare(
 
     try:
         # Navigate and wait for network to settle to handle anti-bot captchas or loading screens
-        page.goto(url, wait_until="networkidle", timeout=60000)
+        page.goto(url, wait_until="domcontentloaded", timeout=90000)
         
         # Explicitly wait for flight result cards to render dynamically (Ixigo typically uses robust class names or buttons)
         try:
-            page.wait_for_selector("button:has-text('Book')", timeout=35000)
+            page.wait_for_selector("button:has-text('Book')", timeout=60000)
         except Exception:
             print(f"Warning: No 'Book' buttons found within 35 seconds. Page might be empty or CAPTCHA blocked.")
 
@@ -175,9 +175,9 @@ def scrape_cheapest_fare_emt(page: Page, source: str, destination: str, travel_d
     
     print(f"Scraping EaseMyTrip: {source} -> {destination} on {travel_date.strftime('%Y-%m-%d')}...")
     try:
-        page.goto(url, wait_until="domcontentloaded", timeout=40000)
+        page.goto(url, wait_until="domcontentloaded", timeout=90000)
         # Wait dynamically for flight prices to appear instead of a blind timeout
-        page.wait_for_selector('.txt-r6-n.exPrc', timeout=30000)
+        page.wait_for_selector('.txt-r6-n.exPrc', timeout=60000)
         
         raw_flights = page.evaluate('''() => {
             const priceDivs = Array.from(document.querySelectorAll('.txt-r6-n.exPrc'));
@@ -251,10 +251,21 @@ def run_scraper(
                 travel_date = datetime.today() + timedelta(days=offset)
                 return_date = travel_date + timedelta(days=return_offset_days) if round_trip else None
 
-                onward_fare_ixigo, return_fare = scrape_cheapest_fare(
-                    page, source, destination, travel_date, return_date, class_type
-                )
-                onward_fare_emt = scrape_cheapest_fare_emt(page, source, destination, travel_date, class_type)
+                # Scrape each portal independently so one timeout doesn't kill the other
+                onward_fare_ixigo = None
+                onward_fare_emt = None
+                
+                try:
+                    onward_fare_ixigo, return_fare = scrape_cheapest_fare(
+                        page, source, destination, travel_date, return_date, class_type
+                    )
+                except Exception as e:
+                    print(f"  [Ixigo Error] {source}->{destination}: {e}")
+                    
+                try:
+                    onward_fare_emt = scrape_cheapest_fare_emt(page, source, destination, travel_date)
+                except Exception as e:
+                    print(f"  [EMT Error] {source}->{destination}: {e}")
                 
                 # Determine which portal offered the cheapest fare
                 fares = []
