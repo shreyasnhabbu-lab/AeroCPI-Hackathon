@@ -379,10 +379,13 @@ def scheduled_scrape():
             
             if onward_fare and db_route:
                 now_ts = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')
+                portal = data.get("source_portal", "Ixigo Scraper")
+                airline = data.get("airline", "Unknown")
+                flight_code = data.get("flight_code", "Unknown")
                 cursor.execute('''
-                    INSERT INTO historical_prices (date, route, price, departure_date, timestamp, class_type) 
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                ''', (today_str, db_route, onward_fare, travel_date, now_ts, "economy"))
+                    INSERT INTO historical_prices (date, route, price, departure_date, timestamp, class_type, source_portal, airline, flight_code) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (today_str, db_route, onward_fare, travel_date, now_ts, "economy", portal, airline, flight_code))
                 saved += 1
                 
         conn.commit()
