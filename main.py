@@ -47,7 +47,7 @@ app.add_middleware(
 )
 
 def get_db_connection():
-    conn = psycopg2.connect("postgresql://neondb_owner:npg_BR1ro8vGHAND@ep-long-frog-az4ccszz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require")
+    conn = psycopg2.connect("postgresql://neondb_owner:npg_VcZHR5MA1bEP@ep-long-frog-az4ccszz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require")
     return conn
 
 @app.get("/api/history")
@@ -59,7 +59,7 @@ def get_history(route: str = "All Routes", class_type: str = "economy"):
         df = pd.read_sql_query(query, conn, params=(class_type,))
     else:
         # Route specific logic: Group by date to average out intra-day multiple scrapes
-        query = "SELECT date, route, AVG(price) as price FROM historical_prices WHERE route = %s AND class_type = %s GROUP BY date, route ORDER BY date ASC"
+        query = "SELECT date, route, AVG(price) as price FROM historical_prices WHERE route = %s AND class_type = %s GROUP BY date ORDER BY date ASC"
         df = pd.read_sql_query(query, conn, params=(route, class_type))
     conn.close()
     
