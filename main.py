@@ -85,6 +85,7 @@ def get_history(route: str = "All Routes", class_type: str = "economy"):
     return df.to_dict(orient="records")
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 @app.get("/api/raw-logs")
 def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7, route: str = "ALL"):
@@ -92,7 +93,7 @@ def get_raw_logs(page: int = 1, limit: int = 50, days: int = 7, route: str = "AL
     
     conditions = []
     if days > 0:
-        cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        cutoff_date = (datetime.now(ZoneInfo('Asia/Kolkata')) - timedelta(days=days)).strftime('%Y-%m-%d')
         conditions.append(f"date >= '{cutoff_date}'")
         
     if route != "ALL":
@@ -123,7 +124,7 @@ def export_raw_logs(days: int = 7, route: str = "ALL"):
     conn = get_db_connection()
     conditions = []
     if days > 0:
-        cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        cutoff_date = (datetime.now(ZoneInfo('Asia/Kolkata')) - timedelta(days=days)).strftime('%Y-%m-%d')
         conditions.append(f"date >= '{cutoff_date}'")
         
     if route != "ALL":
@@ -290,7 +291,7 @@ def login_api(request: LoginRequest):
 # THE LIVE INTEGRATION ENDPOINT
 @app.post("/api/scrape-now")
 def trigger_scrape(request: ScrapeRequest):
-    today_str = datetime.now().strftime('%Y-%m-%d')
+    today_str = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d')
     
     # If the UI asks for ALL, we scrape the core prototype routes
     if request.route == "ALL":
@@ -326,10 +327,10 @@ def trigger_scrape(request: ScrapeRequest):
             elif source == "BOM" and dest == "MAA": db_route = "Mumbai-Chennai"
             
             if onward_fare and db_route:
-                now_ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                now_ts = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')
                 portal = data.get("source_portal") or request.source_portal or 'Ixigo Scraper'
                 # fallback travel date if not returned by adapter
-                travel_date = data.get("travel_date", (datetime.now() + timedelta(days=request.days)).strftime('%Y-%m-%d'))
+                travel_date = data.get("travel_date", (datetime.now(ZoneInfo('Asia/Kolkata')) + timedelta(days=request.days)).strftime('%Y-%m-%d'))
                 
                 cursor.execute('''
                     INSERT INTO historical_prices (date, route, price, departure_date, timestamp, class_type, source_portal, airline, flight_code) 
@@ -363,7 +364,7 @@ def scheduled_scrape():
         conn = get_db_connection()
         cursor = conn.cursor()
         saved = 0
-        today_str = datetime.now().strftime('%Y-%m-%d')
+        today_str = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d')
         
         for data in scraped_data:
             onward_fare = data.get("onward_fare")
@@ -377,7 +378,7 @@ def scheduled_scrape():
             elif source == "BOM" and dest == "MAA": db_route = "Mumbai-Chennai"
             
             if onward_fare and db_route:
-                now_ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                now_ts = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute('''
                     INSERT INTO historical_prices (date, route, price, departure_date, timestamp, class_type) 
                     VALUES (%s, %s, %s, %s, %s, %s)

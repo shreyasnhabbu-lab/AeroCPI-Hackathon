@@ -830,7 +830,7 @@ async function fetchLogsData() {
             let mappedRoute = typeof iataMap !== 'undefined' && iataMap[row.route] ? iataMap[row.route] : row.route;
             let org = mappedRoute === 'COMPOSITE' ? 'MULTI' : mappedRoute.split('-')[0];
             let dst = mappedRoute === 'COMPOSITE' ? 'MULTI' : (mappedRoute.split('-')[1] || '');
-            let timestamp = new Date(row.timestamp.replace(' ', 'T') + 'Z').toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'});
+            let timestamp = row.timestamp + ' IST';
             let depDate = row.departure_date ? row.departure_date : row.date;
             let portal = row.source_portal || 'Ixigo';
             let portalColorClass = portal.toLowerCase().includes('amadeus') ? 'bg-purple-100 text-purple-700 border-purple-200' :
@@ -889,7 +889,7 @@ async function fetchAdminLogs() {
             let logHtml = '';
             // Display oldest to newest
             logArray.reverse().forEach(log => {
-                const ts = new Date(log.timestamp.replace(' ', 'T') + 'Z').toLocaleTimeString('en-US', {hour12: false});
+                const ts = log.timestamp.split(' ')[1];
                 logHtml += `<p>[${ts}] Fetching ${log.route} (ID: ${log.id})... <span class="text-emerald-400">200 OK</span></p>`;
                 logHtml += `<p>[${ts}] Extracted lowest fare: ₹${log.price} for departure ${log.departure_date}</p>`;
             });
